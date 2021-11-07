@@ -1,11 +1,19 @@
 from distutils.core import setup
 
+# read the contents of your README file
+from pathlib import Path
+
+this_directory = Path(__file__).parent
+long_description = (this_directory / "README.md").read_text()
+
 setup(
     name="pickle-jar",
     packages=["jar"],
     version="0.2",  # update for new ver
     license="MIT",
     description="A container for pickle slices.",
+    long_description=long_description,
+    long_description_content_type="text/markdown",
     author="jkvc",
     author_email="kevinehc@gmail.com",
     url="https://github.com/jkvc/pickle-jar",
