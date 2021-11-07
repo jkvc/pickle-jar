@@ -9,7 +9,7 @@ long_description = (this_directory / "README.md").read_text()
 setup(
     name="pickle-jar",
     packages=["jar"],
-    version="0.2",  # update for new ver
+    version="0.3",  # update for new ver
     license="MIT",
     description="A container for pickle slices.",
     long_description=long_description,
@@ -17,7 +17,7 @@ setup(
     author="jkvc",
     author_email="kevinehc@gmail.com",
     url="https://github.com/jkvc/pickle-jar",
-    download_url="https://github.com/jkvc/pickle-jar/archive/refs/tags/v_02.tar.gz",  # update for new ver
+    download_url="https://github.com/jkvc/pickle-jar/archive/refs/tags/v_03.tar.gz",  # update for new ver
     keywords=["pickle", "jar", "container", "serialization"],
     install_requires=[],
     classifiers=[
