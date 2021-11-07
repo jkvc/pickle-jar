@@ -2,7 +2,7 @@ from distutils.core import setup
 
 setup(
     name="pickle-jar",
-    packages=["pickle-jar"],
+    packages=["jar"],
     version="0.1",  # update for new ver
     license="MIT",
     description="A container for pickle slices.",
