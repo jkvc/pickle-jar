@@ -1,1 +1,1 @@
-from jar.jar import dump, load
+from .jar import dump, load
