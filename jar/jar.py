@@ -1,94 +1,98 @@
 # MIT License
-
 # Copyright (c) 2020 Junshen Kevin Chen
+# See LICENSE for details.
 
-# Permission is hereby granted, free of charge, to any person obtaining a copy
-# of this software and associated documentation files (the "Software"), to deal
-# in the Software without restriction, including without limitation the rights
-# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-# copies of the Software, and to permit persons to whom the Software is
-# furnished to do so, subject to the following conditions:
-
-# The above copyright notice and this permission notice shall be included in all
-# copies or substantial portions of the Software.
-
-# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-# SOFTWARE.
-
+from __future__ import annotations
 
 import os
 import pickle
 import shutil
+from pathlib import Path
+from typing import Any
 
-DEFAULT_CHUNK_SIZE = 5000000
-PICKLE_EXTENSION = "pkl"
-WRITE_MODE = "wb"
-READ_MODE = "rb"
+DEFAULT_CHUNK_SIZE: int = 5_000_000
+_PICKLE_EXT: str = "pkl"
 
 
-def dump(obj, path, chunk_size=DEFAULT_CHUNK_SIZE):
-    """Save a pickle-able object to disk, in chunks
+def dump(obj: Any, path: str | os.PathLike[str], chunk_size: int = DEFAULT_CHUNK_SIZE) -> int:
+    """Serialize an object to disk as chunked pickle slices.
 
-    Arguments:
-        obj {any} -- the object to picklize
-        path {str} -- path name on disk to save object
+    The object is pickled, then the resulting bytes are split into
+    ``chunk_size``-byte files inside a directory at *path*.
 
-    Keyword Arguments:
-        chunk_size {int} -- how large each individual chunk is when saved
-            to disk (default: {DEFAULT_CHUNK_SIZE})
+    Args:
+        obj: Any picklable Python object.
+        path: Directory to create (or overwrite) on disk.
+        chunk_size: Max bytes per slice file. Defaults to 5 MB.
 
     Returns:
-        int -- number of chunk saved to disk
-    """
-    if os.path.exists(path):
-        shutil.rmtree(path)
-    os.mkdir(path)
+        Number of chunk files written.
 
-    bytesobj = pickle.dumps(obj)
-    num_bytes = len(bytesobj)
-    num_chunks = num_bytes // chunk_size + (0 if num_bytes % chunk_size == 0 else 1)
+    Raises:
+        ValueError: If *chunk_size* is not a positive integer.
+    """
+    if not isinstance(chunk_size, int) or chunk_size <= 0:
+        raise ValueError(f"chunk_size must be a positive integer, got {chunk_size!r}")
+
+    path = Path(path)
+
+    if path.exists():
+        shutil.rmtree(path)
+    path.mkdir(parents=True)
+
+    data = pickle.dumps(obj)
+    num_bytes = len(data)
+    num_chunks = -(-num_bytes // chunk_size)  # ceiling division
 
     for i in range(num_chunks):
-        filepath = os.path.join(path, f"{i}.{PICKLE_EXTENSION}")
-        with open(filepath, WRITE_MODE) as f:
-            f.write(bytesobj[i * chunk_size : (i + 1) * chunk_size])
+        chunk_path = path / f"{i}.{_PICKLE_EXT}"
+        chunk_path.write_bytes(data[i * chunk_size : (i + 1) * chunk_size])
+
     return num_chunks
 
 
-def load(path):
-    """Load an object from a path
+def load(path: str | os.PathLike[str]) -> Any:
+    """Reassemble and deserialize an object from chunked pickle slices.
 
-    Arguments:
-        path {str} -- path name on disk to load object
+    .. warning::
+
+        Like ``pickle.loads``, this executes arbitrary code embedded in the
+        pickle stream.  **Never load data from untrusted sources.**
+
+    Args:
+        path: Directory previously created by :func:`dump`.
 
     Returns:
-        any -- the loaded objcet
+        The deserialized Python object.
+
+    Raises:
+        FileNotFoundError: If *path* does not exist.
+        NotADirectoryError: If *path* is not a directory.
+        ValueError: If chunk indices are not contiguous starting from 0.
     """
-    assert os.path.exists(path)
-    assert os.path.isdir(path)
+    path = Path(path)
 
-    idxs = set(
-        int(os.path.splitext(filename)[0])
-        for filename in os.listdir(path)
-        if (
-            os.path.isfile(os.path.join(path, filename))
-            and os.path.splitext(filename)[-1] == f".{PICKLE_EXTENSION}"
-            and os.path.splitext(filename)[0].isnumeric()
-        )
-    )
-    max_idx = max(idxs)
+    if not path.exists():
+        raise FileNotFoundError(f"Jar directory not found: {path}")
+    if not path.is_dir():
+        raise NotADirectoryError(f"Expected a directory, got a file: {path}")
+
+    indices: set[int] = set()
+    for entry in path.iterdir():
+        if entry.is_file() and entry.suffix == f".{_PICKLE_EXT}" and entry.stem.isdigit():
+            indices.add(int(entry.stem))
+
+    if not indices:
+        raise ValueError(f"No pickle chunks found in {path}")
+
+    max_idx = max(indices)
+    expected = set(range(max_idx + 1))
+    missing = expected - indices
+    if missing:
+        raise ValueError(f"Missing chunk indices in {path}: {sorted(missing)}")
+
+    buf = bytearray()
     for i in range(max_idx + 1):
-        assert i in idxs
+        buf += (path / f"{i}.{_PICKLE_EXT}").read_bytes()
 
-    ba = bytearray()
-    for i in range(max_idx + 1):
-        filename = os.path.join(path, f"{i}.{PICKLE_EXTENSION}")
-        with open(filename, READ_MODE) as f:
-            ba += f.read()
-
-    return pickle.loads(ba)
+    return pickle.loads(buf)  # noqa: S301

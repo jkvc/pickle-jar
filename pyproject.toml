@@ -1,0 +1,47 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "pickle-jar"
+version = "1.0.0"
+description = "Chunked pickle serialization — split large objects into Git-friendly slices."
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.9"
+authors = [{ name = "jkvc", email = "kevinehc@gmail.com" }]
+keywords = ["pickle", "serialization", "chunked", "git", "large-files"]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Software Development :: Libraries",
+    "Typing :: Typed",
+]
+
+[project.urls]
+Homepage = "https://github.com/jkvc/pickle-jar"
+Repository = "https://github.com/jkvc/pickle-jar"
+Issues = "https://github.com/jkvc/pickle-jar/issues"
+
+[project.optional-dependencies]
+dev = ["pytest>=8", "ruff>=0.4", "numpy"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["jar"]
+
+[tool.ruff]
+target-version = "py39"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B", "SIM"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
